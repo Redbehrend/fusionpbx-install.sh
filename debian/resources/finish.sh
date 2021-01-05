@@ -8,8 +8,6 @@ cd "$(dirname "$0")"
 . ./colors.sh
 
 #database details
-database_host=127.0.0.1
-database_port=5432
 database_username=fusionpbx
 if [ .$database_password = .'random' ]; then
 	database_password=$(dd if=/dev/urandom bs=1 count=20 2>/dev/null | base64 | sed 's/[=\+//]//g')
@@ -19,6 +17,8 @@ fi
 export PGPASSWORD=$database_password
 
 #update the database password
+#sudo -u postgres psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
+#sudo -u postgres psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
 sudo -u postgres psql -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
 sudo -u postgres psql -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
 
@@ -34,6 +34,7 @@ sed -i "s/zzz/$database_password/g" /etc/cron.daily/fusionpbx-maintenance
 mkdir -p /etc/fusionpbx
 chown -R www-data:www-data /etc/fusionpbx
 cp fusionpbx/config.php /etc/fusionpbx
+sed -i /etc/fusionpbx/config.php -e s:"{database_host}:$database_host:"
 sed -i /etc/fusionpbx/config.php -e s:'{database_username}:fusionpbx:'
 sed -i /etc/fusionpbx/config.php -e s:"{database_password}:$database_password:"
 
@@ -72,13 +73,14 @@ password_hash=$(php -r "echo md5('$user_salt$user_password');");
 psql --host=$database_host --port=$database_port --username=$database_username -t -c "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$user_uuid', '$domain_uuid', '$user_name', '$password_hash', '$user_salt', 'true');"
 
 #get the superadmin group_uuid
-group_uuid=$(psql --host=$database_host --port=$database_port --username=$database_username -t -c "select group_uuid from v_groups where group_name = 'superadmin';");
-group_uuid=$(echo $group_uuid | sed 's/^[[:blank:]]*//;s/[[:blank:]]*$//')
+#echo "psql --host=$database_host --port=$database_port --username=$database_username -qtAX -c \"select group_uuid from v_groups where group_name = 'superadmin';\""
+group_uuid=$(psql --host=$database_host --port=$database_port --username=$database_username -qtAX -c "select group_uuid from v_groups where group_name = 'superadmin';");
 
 #add the user to the group
 user_group_uuid=$(/usr/bin/php /var/www/fusionpbx/resources/uuid.php);
 group_name=superadmin
 if [ .$system_branch = .'master' ]; then
+	#echo "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
 	psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
 else
 	psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_group_users (group_user_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
@@ -87,7 +89,7 @@ fi
 xml_cdr_username=$(dd if=/dev/urandom bs=1 count=20 2>/dev/null | base64 | sed 's/[=\+//]//g')
 xml_cdr_password=$(dd if=/dev/urandom bs=1 count=20 2>/dev/null | base64 | sed 's/[=\+//]//g')
 sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_http_protocol}:http:"
-sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{domain_name}:127.0.0.1:"
+sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{domain_name}:$database_host:"
 sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_project_path}::"
 sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_user}:$xml_cdr_username:"
 sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_pass}:$xml_cdr_password:"
@@ -120,7 +122,7 @@ echo ""
 echo "      Location:               Online"
 echo "      Admin Training:          TBA"
 echo "      Advanced Training:       TBA"
-echo "      Continuing Education:    26th March 2019 (1 Day)"
+echo "      Continuing Education:    17th December 2020 (1 Day)"
 echo "      Timezone:               https://www.timeanddate.com/weather/usa/idaho"
 echo ""
 echo "   Additional information."
@@ -130,6 +132,3 @@ echo "      https://fusionpbx.com/support.php"
 echo "      https://www.fusionpbx.com"
 echo "      http://docs.fusionpbx.com"
 echo ""
-
-
-

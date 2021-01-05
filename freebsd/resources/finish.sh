@@ -32,6 +32,7 @@ if [ .$nginx_enabled = .'true' ]; then
 	mkdir -p /etc/fusionpbx
 	chown -R www:www /etc/fusionpbx
 	cp fusionpbx/config.php /etc/fusionpbx
+	sed -i' ' -e s:"{database_host}:$database_host:" /etc/fusionpbx/config.php
 	sed -i' ' -e s:'{database_username}:fusionpbx:' /etc/fusionpbx/config.php
 	sed -i' ' -e s:"{database_password}:$database_password:" /etc/fusionpbx/config.php
 
@@ -102,6 +103,7 @@ if [ .$nginx_enabled = .'true' ]; then
 
 	#reset the current working directory
 	cd $cwd
+
 fi
 
 if [ .$switch_enabled = .'true' ]; then
@@ -125,13 +127,14 @@ if [ .$switch_enabled = .'true' ]; then
 	sed -i' ' -e s:"{v_user}:$xml_cdr_username:" $conf_dir/autoload_configs/xml_cdr.conf.xml
 	sed -i' ' -e s:"{v_pass}:$xml_cdr_password:" $conf_dir/autoload_configs/xml_cdr.conf.xml
 
-	#stop freeswitch
-	#service freeswitch restart
+	#restart freeswitch
+	service freeswitch restart
 
 	#install monit.sh
 	if [ .$monit_enabled = .'true' ]; then
 		. ./monit.sh
 	fi
+
 fi
 
 #welcome message
@@ -157,7 +160,7 @@ echo ""
 echo "      Location:               Online"
 echo "      Admin Training:          TBA"
 echo "      Advanced Training:       TBA"
-echo "      Continuing Education:    26th March 2019 (1 Day)"
+echo "      Continuing Education:    17th December 2020 (1 Day)"
 echo "      Timezone:               https://www.timeanddate.com/weather/usa/idaho"
 echo ""
 echo "   Additional information."
